@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# Data files - too large for git
+data/*.csv
+data/*.parquet
+!data/.gitkeep
+
+# Generated charts
+presentation/*.png
+!presentation/.gitkeep
+
+# OS
+.DS_Store
