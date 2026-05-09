@@ -92,15 +92,22 @@ weekly.head()
 
 # %%
 # Show the UPP trend (1P declining, WFS static) — the project's key insight
-fig, ax = plt.subplots(figsize=(11, 4))
+CHANNEL_COLORS = {"1P": "steelblue", "WFS": "darkslategray"}
+fig, ax = plt.subplots(figsize=(12, 5))
 for ch in weekly["channel"].unique():
     sub = weekly[weekly["channel"] == ch].drop_duplicates("week_start")
-    ax.plot(sub["week_start"], sub["upp"], label=ch, linewidth=2)
-ax.set_title("UPP (Units Per Package) trend — 1P declining, WFS static\nKey insight: UPP forecast error compounds into package forecast error")
+    ax.plot(sub["week_start"], sub["upp"], label=ch, linewidth=2,
+            color=CHANNEL_COLORS.get(ch, "steelblue"))
+ax.set_title(
+    "UPP (Units Per Package) trend — 1P declining, WFS static\n"
+    "Key insight: UPP forecast error compounds into package forecast error",
+    fontsize=14, fontweight="bold",
+)
 ax.set_ylabel("UPP")
 ax.legend()
+ax.grid(True, alpha=0.3)
 fig.tight_layout()
-fig.savefig(PRESENTATION_DIR / "01_upp_trend.png", dpi=150)
+fig.savefig(PRESENTATION_DIR / "01_upp_trend.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
@@ -208,9 +215,17 @@ network_1p = (
 decomp = seasonal_decompose(network_1p, period=52, model="multiplicative")
 fig = decomp.plot()
 fig.set_size_inches(12, 8)
-fig.suptitle("Weekly 1P Network Volume — Decomposition (52-week period)", y=1.0)
+# Recolor decomposition lines to match the project's primary palette
+for ax in fig.axes:
+    for line in ax.get_lines():
+        line.set_color("steelblue")
+    ax.grid(True, alpha=0.3)
+fig.suptitle(
+    "Weekly 1P Network Volume — Decomposition (52-week period)",
+    y=1.0, fontsize=14, fontweight="bold",
+)
 fig.tight_layout()
-fig.savefig(PRESENTATION_DIR / "02_decomposition.png", dpi=150)
+fig.savefig(PRESENTATION_DIR / "02_decomposition.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
@@ -238,11 +253,12 @@ corr_features = ["units", "upp", "packages", "carrier_packages", "carrier_share"
                  "fiscal_week", "month", "is_peak"]
 corr_matrix = corr_df[corr_features].corr()
 
-fig, ax = plt.subplots(figsize=(9, 7))
+fig, ax = plt.subplots(figsize=(10, 8))
 sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="RdBu_r", center=0, ax=ax)
-ax.set_title("Correlation matrix — package volume drivers")
+ax.set_title("Correlation matrix — package volume drivers",
+             fontsize=14, fontweight="bold")
 fig.tight_layout()
-fig.savefig(PRESENTATION_DIR / "03_correlation_heatmap.png", dpi=150)
+fig.savefig(PRESENTATION_DIR / "03_correlation_heatmap.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]

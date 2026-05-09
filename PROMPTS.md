@@ -6,12 +6,29 @@
 
 ## ⚙️ How to use this file
 
-1. Open one terminal in your project root, run `claude` to start Claude Code
-2. Open another terminal in the project root for git, running notebooks, etc.
-3. For each block below, paste the prompt verbatim, then **review what Claude Code proposes BEFORE accepting changes**
-4. After each block, commit: `git add -A && git commit -m "Block N: <summary>"`
+You can drive Claude Code from a terminal **or** straight from the VS Code extension. Pick whichever flow fits the block — most people stay in VS Code for editing-heavy work and switch to the terminal when running notebooks.
 
-**Rule:** If Claude Code is on a wrong track for more than 5 minutes, stop it (Ctrl+C), reset context, and re-prompt with more specifics. Never let it sprawl.
+### Option A — VS Code extension (recommended for this project)
+
+1. Install the **Claude Code** extension from the VS Code marketplace and sign in.
+2. Open the `parcelcast/` folder as the workspace root.
+3. Confirm the Python interpreter is `./.venv/bin/python` (Cmd+Shift+P → "Python: Select Interpreter"). The repo's `.vscode/settings.json` pins this by default.
+4. Open the Claude panel (Cmd+Esc, or click the Claude icon in the activity bar).
+5. For each block below, paste the prompt verbatim into the Claude panel, then **review the proposed diff in the editor BEFORE clicking Accept**.
+6. Use the integrated terminal (Ctrl+\`) for git commits and notebook execution — Claude can see the same workspace.
+7. If you highlight code in the editor before sending a prompt, that selection is automatically included as context — handy for "fix this function" style asks.
+
+### Option B — Terminal CLI
+
+1. Open one terminal in your project root, run `claude` to start Claude Code.
+2. Open another terminal in the project root for git, running notebooks, etc.
+3. For each block below, paste the prompt verbatim, then **review what Claude Code proposes BEFORE accepting changes**.
+
+### After every block (both options)
+
+Commit immediately: `git add -A && git commit -m "Block N: <summary>"`. Small, reviewable commits are the whole point — don't let multiple blocks pile up.
+
+**Rule:** If Claude Code is on a wrong track for more than 5 minutes, stop it (Esc in the VS Code panel, or Ctrl+C in the terminal), reset context, and re-prompt with more specifics. Never let it sprawl.
 
 ---
 

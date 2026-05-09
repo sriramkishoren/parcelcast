@@ -199,7 +199,7 @@ def run_validation_suite(df: pd.DataFrame) -> pd.DataFrame:
 
     # 5. Date range is continuous
     if "week_start" in df.columns:
-        weeks = pd.to_datetime(df["week_start"].unique()).sort_values()
+        weeks = pd.DatetimeIndex(df["week_start"].unique()).sort_values()
         gaps = (weeks[1:] - weeks[:-1]).days
         check("weeks: no gaps", (gaps == 7).all() if len(gaps) else True, "")
 

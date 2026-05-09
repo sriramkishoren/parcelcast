@@ -58,6 +58,12 @@ def reshape_to_long(sales: pd.DataFrame) -> pd.DataFrame:
         var_name="d",
         value_name="units",
     )
+    # Memory optimization: same values, smaller dtypes. The melt explodes ~30K
+    # unique ids across 1,941 days; without categoricals the id columns alone
+    # consume several GB and force downstream operations into swap.
+    for c in id_cols + ["d"]:
+        long[c] = long[c].astype("category")
+    long["units"] = pd.to_numeric(long["units"], downcast="unsigned")
     return long
 
 

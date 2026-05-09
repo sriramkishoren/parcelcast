@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/kishore/Documents/IT/Personal_Projects/parcelcast/.venv/bin/python -c \"import sys, matplotlib; print\\(sys.version\\); print\\(matplotlib.__version__\\); print\\(matplotlib.__file__\\)\")",
+      "Bash(.venv/bin/jupytext --to ipynb notebooks/01_data_quality_eda.py)",
+      "Bash(../.venv/bin/jupyter nbconvert *)"
+    ]
+  }
+}
