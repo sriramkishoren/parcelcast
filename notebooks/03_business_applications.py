@@ -1,0 +1,266 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+# ---
+
+# %% [markdown]
+# # 📦 ParcelCast — Notebook 3
+# ## Business Application Layer
+#
+# **Purpose:** Translate forecasts into decisions. This is what separates
+# "I built a forecasting model" from "I built a forecasting product."
+#
+# **What's here:**
+# 1. **FedEx HD Monthly Contract Monitor** — projects monthly volumes vs the
+#    ~$19.5M-$26.8M contract band, flags status, recommends action.
+# 2. **OnTrac Tier 2 Risk Alert** — rolling-avg breach detection, projects
+#    forward 4 weeks, flags the breach week.
+# 3. **Carrier Cost-Shift Simulator** — what does it cost to shift 5% of
+#    volume from FedEx/UPS to IP? Annualized savings.
+# 4. **Executive 4-panel dashboard** — single image for the deck.
+
+# %%
+import sys
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+sys.path.insert(0, str(Path.cwd().parent))
+
+from src.business import (
+    fedex_contract_monitor,
+    ontrac_tier_risk_alert,
+    carrier_cost_shift_simulator,
+    FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES,
+    FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES,
+    ONTRAC_TIER_2_WEEKLY_THRESHOLD,
+)
+from src.parcel_transform import COST_PER_PACKAGE, CARRIER_BASE_SHARES
+
+sns.set_theme(style="whitegrid", palette="muted")
+PRESENTATION_DIR = Path.cwd().parent / "presentation"
+DATA_DIR = Path.cwd().parent / "data"
+
+# %% [markdown]
+# ## 1. Load forecast and historical carrier volumes
+
+# %%
+forecast = pd.read_parquet(DATA_DIR / "network_forecast.parquet")
+forecast["week_start"] = pd.to_datetime(forecast["week_start"])
+print(f"Forecast: {len(forecast)} weeks")
+forecast.head()
+
+# %%
+carrier_history = pd.read_parquet(DATA_DIR / "weekly_network_volumes.parquet")
+carrier_history["week_start"] = pd.to_datetime(carrier_history["week_start"])
+print(f"Carrier history: {len(carrier_history):,} rows")
+
+# %% [markdown]
+# ## 2. Project per-carrier package forecasts
+#
+# Apply current network-level carrier shares to the forecasted total.
+
+# %%
+carrier_forecast_rows = []
+for carrier, share in CARRIER_BASE_SHARES.items():
+    sub = forecast.copy()
+    sub["carrier"] = carrier
+    sub[f"{carrier.lower()}_packages"] = sub["packages_forecast"] * share
+    carrier_forecast_rows.append(sub[["week_start", "carrier", f"{carrier.lower()}_packages"]])
+
+# Wide format for easier downstream use
+forecast_wide = forecast[["week_start", "packages_forecast"]].copy()
+for carrier, share in CARRIER_BASE_SHARES.items():
+    forecast_wide[f"{carrier.lower()}_packages"] = forecast["packages_forecast"] * share
+forecast_wide.head()
+
+# %% [markdown]
+# ## 3. FedEx HD Monthly Contract Monitor
+
+# %%
+fedex_status = fedex_contract_monitor(
+    forecast_wide,
+    forecast_col="fedex_packages",
+    contract_min=FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES,
+    contract_max=FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES,
+)
+fedex_status
+
+# %%
+# Save and visualize
+fedex_status.to_csv(DATA_DIR / "fedex_contract_status.csv", index=False)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+months = fedex_status["month"]
+ax.bar(months, fedex_status["forecast_packages"], color="steelblue", alpha=0.8, label="Forecast")
+ax.axhline(FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES, color="red", linestyle="--", label="Contract MIN")
+ax.axhline(FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES, color="green", linestyle="--", label="Contract MAX")
+ax.set_title("FedEx HD Monthly Volume vs Contract Band")
+ax.set_ylabel("Packages")
+ax.legend()
+plt.xticks(rotation=45)
+fig.tight_layout()
+fig.savefig(PRESENTATION_DIR / "07_fedex_contract.png", dpi=150)
+plt.show()
+
+# %% [markdown]
+# ## 4. OnTrac Tier 2 Risk Alert
+
+# %%
+# Build OnTrac historical weekly series (sum across regions)
+ontrac_history = (
+    carrier_history[carrier_history["carrier"] == "OnTrac"]
+    .groupby("week_start", as_index=False)["carrier_packages"].sum()
+    .rename(columns={"carrier_packages": "ontrac_packages"})
+)
+
+ontrac_full, alert = ontrac_tier_risk_alert(
+    ontrac_history,
+    volume_col="ontrac_packages",
+    threshold=ONTRAC_TIER_2_WEEKLY_THRESHOLD,
+)
+
+print("OnTrac Tier 2 Alert:")
+for k, v in alert.items():
+    print(f"  {k}: {v}")
+
+# %%
+# Visualize with risk zone
+fig, ax = plt.subplots(figsize=(12, 5))
+hist_mask = ~ontrac_full.get("is_projection", pd.Series(False, index=ontrac_full.index)).fillna(False)
+ax.plot(
+    ontrac_full.loc[hist_mask, "week_start"],
+    ontrac_full.loc[hist_mask, "ontrac_packages"],
+    "b-", label="Historical", linewidth=1.5,
+)
+ax.plot(
+    ontrac_full.loc[~hist_mask, "week_start"],
+    ontrac_full.loc[~hist_mask, "ontrac_packages"],
+    "b--", label="Projection (4wks)", linewidth=2, alpha=0.7,
+)
+ax.plot(
+    ontrac_full["week_start"],
+    ontrac_full["rolling_avg"],
+    "orange", label="6-week rolling avg", linewidth=2,
+)
+ax.axhline(ONTRAC_TIER_2_WEEKLY_THRESHOLD, color="red", linestyle="--", label="Tier 2 threshold")
+ax.fill_between(
+    ontrac_full["week_start"],
+    ONTRAC_TIER_2_WEEKLY_THRESHOLD,
+    ontrac_full["ontrac_packages"].max() * 1.1,
+    alpha=0.1, color="red",
+)
+ax.set_title("OnTrac Tier 2 Risk Monitor")
+ax.set_ylabel("Packages / week")
+ax.legend()
+fig.tight_layout()
+fig.savefig(PRESENTATION_DIR / "08_ontrac_alert.png", dpi=150)
+plt.show()
+
+# %% [markdown]
+# ## 5. Carrier Cost-Shift Simulator
+#
+# What if we shift 5% of FedEx + UPS volume to IP (cheaper internal carrier)?
+
+# %%
+# Use latest week's volumes as the "current allocation" baseline
+latest_week = carrier_history["week_start"].max()
+latest_volumes = (
+    carrier_history[carrier_history["week_start"] == latest_week]
+    .groupby("carrier")["carrier_packages"].sum()
+    .astype(int)
+    .to_dict()
+)
+print(f"Latest week: {latest_week.date()}")
+print(f"Volumes: {latest_volumes}")
+
+# %%
+cost_scenarios = carrier_cost_shift_simulator(
+    current_allocation=latest_volumes,
+    cost_per_package=COST_PER_PACKAGE,
+    shift_pct=0.05,
+    shift_from=["FedEx", "UPS"],
+    shift_to="IP",
+)
+cost_scenarios
+
+# %%
+cost_scenarios.to_csv(DATA_DIR / "cost_optimization.csv", index=False)
+
+# %% [markdown]
+# **The takeaway:** with current network volumes and these cost assumptions, a
+# 5% shift from FedEx+UPS to IP saves approximately **$X / week** = **$Y / year**.
+#
+# *(Cost per package figures are illustrative — see deck for assumptions.)*
+
+# %% [markdown]
+# ## 6. Executive 4-Panel Dashboard
+
+# %%
+scorecard = pd.read_csv(DATA_DIR / "model_scorecard.csv")
+
+fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+fig.suptitle("ParcelCast — Executive Dashboard", fontsize=15, fontweight="bold", y=1.0)
+
+# Panel 1: Volume trend with forecast overlay
+ax1 = axes[0, 0]
+hist = (
+    carrier_history.groupby("week_start", as_index=False)["carrier_packages"].sum()
+    .rename(columns={"carrier_packages": "packages"})
+)
+ax1.plot(hist["week_start"].tail(52), hist["packages"].tail(52), "k-", label="Historical", linewidth=1.5)
+ax1.plot(forecast["week_start"], forecast["packages_forecast"], "b-", label="Forecast", linewidth=2)
+ax1.fill_between(forecast["week_start"], forecast["packages_low"], forecast["packages_high"], alpha=0.2)
+ax1.set_title("Network Volume — Last 52 weeks + 12-week forecast")
+ax1.set_ylabel("Packages")
+ax1.legend()
+
+# Panel 2: Carrier share
+ax2 = axes[0, 1]
+share_data = pd.Series(latest_volumes) / sum(latest_volumes.values())
+colors = ["#4C72B0", "#55A868", "#C44E52", "#8172B2"]
+ax2.pie(share_data.values, labels=share_data.index, autopct="%1.0f%%", colors=colors)
+ax2.set_title("Current Carrier Share")
+
+# Panel 3: Model scorecard
+ax3 = axes[1, 0]
+ax3.axis("off")
+table = ax3.table(
+    cellText=scorecard.values.round(2),
+    colLabels=scorecard.columns,
+    cellLoc="center", loc="center",
+)
+table.auto_set_font_size(False)
+table.set_fontsize(10)
+table.scale(1, 2)
+ax3.set_title("Model Scorecard (lower WMAPE is better)", pad=20)
+
+# Panel 4: FedEx contract status
+ax4 = axes[1, 1]
+ax4.bar(fedex_status["month"], fedex_status["forecast_packages"], color="steelblue")
+ax4.axhline(FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES, color="red", linestyle="--", label="MIN")
+ax4.axhline(FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES, color="green", linestyle="--", label="MAX")
+ax4.set_title("FedEx HD Contract Status")
+ax4.set_ylabel("Monthly packages")
+ax4.legend()
+plt.setp(ax4.xaxis.get_majorticklabels(), rotation=45)
+
+fig.tight_layout()
+fig.savefig(PRESENTATION_DIR / "09_executive_dashboard.png", dpi=150, bbox_inches="tight")
+plt.show()
+
+# %% [markdown]
+# ## 7. Wrap up
+#
+# **What's saved to `data/`:**
+# - `fedex_contract_status.csv` — monthly forecasted volume vs contract band
+# - `cost_optimization.csv` — current vs proposed carrier allocation
+#
+# **What's saved to `presentation/`:**
+# - 9 charts ready to drop into the 8-slide deck
+#
+# **Sunday morning:** build the deck, polish, ship.
