@@ -14,11 +14,16 @@ import pandas as pd
 
 # ─── Contract & threshold parameters ──────────────────────────────────────────
 # Illustrative; document as assumptions in the deck.
+#
+# Thresholds are scaled to the M5-derived demo dataset (~90K weekly FedEx
+# packages). In a production deployment against real Walmart parcel volume,
+# replace with the operating thresholds (~19.5M / ~26.8M monthly for FedEx HD,
+# ~850K weekly for OnTrac Tier 2).
 
-FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES = 19_500_000
-FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES = 26_800_000
+FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES = 320_000
+FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES = 420_000
 
-ONTRAC_TIER_2_WEEKLY_THRESHOLD = 850_000
+ONTRAC_TIER_2_WEEKLY_THRESHOLD = 14_500
 ONTRAC_ROLLING_WINDOW_WEEKS = 6
 
 
@@ -41,11 +46,16 @@ def fedex_contract_monitor(
     df["month"] = df[date_col].dt.to_period("M")
 
     monthly = (
-        df.groupby("month")[forecast_col]
-        .sum()
+        df.groupby("month")
+        .agg(forecast_packages=(forecast_col, "sum"),
+             n_weeks=(forecast_col, "size"))
         .reset_index()
-        .rename(columns={forecast_col: "forecast_packages"})
     )
+
+    # Drop partial-forecast months (<4 weeks). Keeps the contract band
+    # comparison apples-to-apples; partial months would always trip BELOW MIN
+    # purely from week-count, not real demand.
+    monthly = monthly[monthly["n_weeks"] >= 4].drop(columns="n_weeks").reset_index(drop=True)
 
     monthly["contract_min"] = contract_min
     monthly["contract_max"] = contract_max
@@ -129,12 +139,17 @@ def ontrac_tier_risk_alert(
 
     # Find first week (in projection or recent past) where threshold is breached
     breach = df[df["over_threshold"]].head(1)
+    # "Current" = last historical (non-projection) week, not wall-clock today —
+    # the dataset may be historical, in which case "weeks until" is relative
+    # to the dataset's reference point, not the calendar.
+    historical = df[~df.get("is_projection", pd.Series(False, index=df.index))]
+    last_hist_date = historical[date_col].iloc[-1] if not historical.empty else df[date_col].iloc[-1]
     alert = {
         "threshold": threshold,
         "current_rolling_avg": int(df["rolling_avg"].iloc[len(df) - forward_weeks - 1]) if len(df) > forward_weeks else None,
         "breach_week": str(breach[date_col].iloc[0].date()) if not breach.empty else None,
         "weeks_until_breach": (
-            int((breach[date_col].iloc[0] - pd.Timestamp.today()).days / 7)
+            int((breach[date_col].iloc[0] - last_hist_date).days / 7)
             if not breach.empty else None
         ),
         "recommended_action": (

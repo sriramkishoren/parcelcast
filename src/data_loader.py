@@ -109,6 +109,13 @@ def aggregate_to_weekly(df: pd.DataFrame, by: list[str]) -> pd.DataFrame:
     df = df.copy()
     # M5's calendar already has wm_yr_wk — use it directly for fiscal week alignment
     if "wm_yr_wk" in df.columns:
+        # Drop partial fiscal weeks. M5's evaluation set ends mid-week, so the
+        # final wm_yr_wk has only 1-2 days of data — aggregating it produces a
+        # phantom "week" with ~1/4 the volume that breaks downstream forecasting.
+        days_per_week = df.groupby("wm_yr_wk")["date"].nunique()
+        complete_weeks = days_per_week[days_per_week == 7].index
+        df = df[df["wm_yr_wk"].isin(complete_weeks)]
+
         # Map wm_yr_wk to its Saturday start date for plotting
         wk_dates = (
             df.groupby("wm_yr_wk")["date"]

@@ -204,7 +204,7 @@ cost_scenarios.to_csv(DATA_DIR / "cost_optimization.csv", index=False)
 scorecard = pd.read_csv(DATA_DIR / "model_scorecard.csv")
 
 fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-fig.suptitle("ParcelCast — Executive Dashboard", fontsize=15, fontweight="bold", y=1.0)
+fig.suptitle("ParcelCast — Executive Dashboard", fontsize=16, fontweight="bold", y=1.0)
 
 # Panel 1: Volume trend with forecast overlay
 ax1 = axes[0, 0]
@@ -229,9 +229,21 @@ ax2.set_title("Current Carrier Share")
 # Panel 3: Model scorecard
 ax3 = axes[1, 0]
 ax3.axis("off")
+scorecard_display = scorecard.copy()
+for c in ["traditional_error_pct", "wmape_pct"]:
+    if c in scorecard_display.columns:
+        scorecard_display[c] = scorecard_display[c].astype(float).round(2)
+# Wrap long column headers onto two lines so they fit the table cells
+header_labels = {
+    "model": "Model",
+    "traditional_error_pct": "Traditional\nError %",
+    "wmape_pct": "WMAPE %",
+    "rank_wmape": "Rank\n(WMAPE)",
+}
+col_labels = [header_labels.get(c, c) for c in scorecard_display.columns]
 table = ax3.table(
-    cellText=scorecard.values.round(2),
-    colLabels=scorecard.columns,
+    cellText=scorecard_display.values,
+    colLabels=col_labels,
     cellLoc="center", loc="center",
 )
 table.auto_set_font_size(False)
@@ -247,9 +259,15 @@ ax4.axhline(FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES, color="green", linestyle="--
 ax4.set_title("FedEx HD Contract Status")
 ax4.set_ylabel("Monthly packages")
 ax4.legend()
-plt.setp(ax4.xaxis.get_majorticklabels(), rotation=45)
+plt.setp(ax4.xaxis.get_majorticklabels(), rotation=30)
 
 fig.tight_layout()
+fig.text(
+    0.5, 0.005,
+    f"ParcelCast | M5 data with parcel-domain reframing | "
+    f"Built {pd.Timestamp.today().date().isoformat()}",
+    ha="center", fontsize=9, color="gray",
+)
 fig.savefig(PRESENTATION_DIR / "09_executive_dashboard.png", dpi=150, bbox_inches="tight")
 plt.show()
 

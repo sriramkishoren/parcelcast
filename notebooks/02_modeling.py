@@ -116,11 +116,13 @@ print(f"LightGBM metrics: {lgbm_metrics}")
 
 # %%
 fi = lgbm.feature_importance(top_n=15)
-fig, ax = plt.subplots(figsize=(9, 6))
-sns.barplot(data=fi, x="importance", y="feature", ax=ax, palette="Blues_r")
-ax.set_title("LightGBM feature importance (gain)")
+fig, ax = plt.subplots(figsize=(12, 5))
+sns.barplot(data=fi, x="importance", y="feature", ax=ax, color="steelblue")
+ax.set_title("LightGBM feature importance (gain)",
+             fontsize=14, fontweight="bold")
+ax.grid(True, alpha=0.3, axis="x")
 fig.tight_layout()
-fig.savefig(PRESENTATION_DIR / "04_feature_importance.png", dpi=150)
+fig.savefig(PRESENTATION_DIR / "04_feature_importance.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
@@ -145,21 +147,27 @@ scorecard.to_csv(DATA_DIR / "model_scorecard.csv", index=False)
 
 # %%
 fig, ax = plt.subplots(figsize=(12, 5))
-ax.plot(test["week_start"], test["packages"], "k-", marker="o", label="Actual", linewidth=2)
-ax.plot(test["week_start"], baseline_pred, "--", label="Baseline (4wk MA)", alpha=0.7)
-ax.plot(test["week_start"], prophet_pred, "-", label="Prophet", linewidth=2)
-ax.plot(test["week_start"], lgbm_network_pred, "-", label="LightGBM", linewidth=2)
+ax.plot(test["week_start"], test["packages"], color="black",
+        marker="o", label="Actual", linewidth=2)
+ax.plot(test["week_start"], baseline_pred, "--",
+        label="Baseline (4wk MA)", color="darkslategray", alpha=0.7)
+ax.plot(test["week_start"], prophet_pred, "-",
+        label="Prophet", color="orange", linewidth=2)
+ax.plot(test["week_start"], lgbm_network_pred, "-",
+        label="LightGBM", color="steelblue", linewidth=2)
 ax.fill_between(
     test["week_start"],
     prophet_forecast["yhat_lower"].values,
     prophet_forecast["yhat_upper"].values,
-    alpha=0.15, label="Prophet 80% CI",
+    color="orange", alpha=0.12, label="Prophet 80% CI",
 )
-ax.set_title("Forecast vs Actuals — Network weekly package volume (12-week test)")
+ax.set_title("Forecast vs Actuals — Network weekly package volume (12-week test)",
+             fontsize=14, fontweight="bold")
 ax.set_ylabel("Packages")
 ax.legend()
+ax.grid(True, alpha=0.3)
 fig.tight_layout()
-fig.savefig(PRESENTATION_DIR / "05_forecast_vs_actuals.png", dpi=150)
+fig.savefig(PRESENTATION_DIR / "05_forecast_vs_actuals.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
@@ -167,6 +175,9 @@ plt.show()
 #
 # Show how forecast accuracy improves as we get closer to the target week.
 # This is the format the team already uses.
+#
+# This matches the WW14 lag-analysis format and shows accuracy degradation as
+# forecast horizon extends — the same pattern reported there.
 
 # %%
 # For each lag in {1,2,3,4}, generate a "rolling lag-N forecast":
@@ -207,19 +218,29 @@ lag_table = lag_analysis(actuals_indexed, forecasts_by_lag)
 lag_table
 
 # %%
-lag_table.to_csv(DATA_DIR / "lag_analysis.csv", index=False)
+# Save in the WW14 reporting format: row label = "N week(s)",
+# columns = "Traditional Error %" and "WMAPE %". Drops the engineering-only n_obs.
+ww14_lag = pd.DataFrame({
+    "Lag": [f"{n} week" if n == 1 else f"{n} weeks" for n in lag_table["lag_weeks"]],
+    "Traditional Error %": lag_table["traditional_error_pct"].round(2),
+    "WMAPE %": lag_table["wmape_pct"].round(2),
+})
+ww14_lag.to_csv(DATA_DIR / "lag_analysis.csv", index=False)
+ww14_lag
 
 # %%
 # Visualize the Lag analysis
-fig, ax = plt.subplots(figsize=(9, 4))
+fig, ax = plt.subplots(figsize=(12, 5))
 ax.bar(lag_table["lag_weeks"].astype(str), lag_table["wmape_pct"], color="steelblue")
 for i, row in lag_table.iterrows():
     ax.text(i, row["wmape_pct"] + 0.3, f"{row['wmape_pct']:.1f}%", ha="center")
 ax.set_xlabel("Forecast Lag (weeks)")
 ax.set_ylabel("WMAPE %")
-ax.set_title("Forecast Accuracy by Lag\n(Mirrors WW14 report's Lag-1 vs Lag-4 comparison)")
+ax.set_title("Forecast Accuracy by Lag\n(Mirrors WW14 report's Lag-1 vs Lag-4 comparison)",
+             fontsize=14, fontweight="bold")
+ax.grid(True, alpha=0.3, axis="y")
 fig.tight_layout()
-fig.savefig(PRESENTATION_DIR / "06_lag_analysis.png", dpi=150)
+fig.savefig(PRESENTATION_DIR / "06_lag_analysis.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
