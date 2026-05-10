@@ -1,5 +1,5 @@
 """
-Model wrappers: Baseline (4-week MA) / Prophet (with Walmart holidays) / LightGBM.
+Model wrappers: Baseline (4-week MA) / Prophet (with US retail holidays) / LightGBM.
 
 Uniform-ish interface, but Prophet and LightGBM are different enough that
 they have their own helper functions rather than a strict ABC.
@@ -29,7 +29,7 @@ class MovingAverageBaseline:
 
 # ─── Prophet ──────────────────────────────────────────────────────────────────
 
-WALMART_HOLIDAYS = pd.DataFrame({
+US_RETAIL_HOLIDAYS = pd.DataFrame({
     "holiday": [
         "BlackFriday", "BlackFriday", "BlackFriday", "BlackFriday", "BlackFriday",
         "CyberMonday", "CyberMonday", "CyberMonday", "CyberMonday", "CyberMonday",
@@ -54,14 +54,14 @@ WALMART_HOLIDAYS = pd.DataFrame({
 
 
 class ProphetModel:
-    """Prophet wrapper with Walmart-specific holidays and yearly seasonality."""
+    """Prophet wrapper with US retail holidays and yearly seasonality."""
 
     def __init__(self, seasonality_mode: str = "multiplicative"):
         from prophet import Prophet
         self._Prophet = Prophet
         self.seasonality_mode = seasonality_mode
         self.model = None
-        self._freq = "W-SAT"  # Walmart fiscal week starts Saturday
+        self._freq = "W-SAT"  # Retailer's fiscal week starts Saturday
 
     def fit(self, df: pd.DataFrame, date_col: str = "week_start", target_col: str = "packages"):
         train = df[[date_col, target_col]].rename(columns={date_col: "ds", target_col: "y"})
@@ -71,7 +71,7 @@ class ProphetModel:
             weekly_seasonality=False,
             daily_seasonality=False,
             seasonality_mode=self.seasonality_mode,
-            holidays=WALMART_HOLIDAYS,
+            holidays=US_RETAIL_HOLIDAYS,
             interval_width=0.80,
         )
         self.model.fit(train)

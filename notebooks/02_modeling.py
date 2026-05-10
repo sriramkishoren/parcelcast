@@ -10,11 +10,11 @@
 #
 # **Purpose:** Build and compare forecasting models using the parcel team's
 # exact metrics (Traditional Error + WMAPE) plus a lag analysis that mirrors
-# the WW14 report format.
+# the WPR report format.
 #
 # **Models:**
 # 1. **4-week MA** — naive baseline, the floor
-# 2. **Prophet** — yearly seasonality + Walmart holidays
+# 2. **Prophet** — yearly seasonality + US retail holidays
 # 3. **LightGBM** — global model with lag/calendar/UPP features
 
 # %%
@@ -69,7 +69,7 @@ baseline_metrics = all_metrics(test["packages"].values, baseline_pred)
 print(f"Baseline metrics: {baseline_metrics}")
 
 # %% [markdown]
-# ## 3. Prophet with Walmart holidays
+# ## 3. Prophet with US retail holidays
 
 # %%
 prophet = ProphetModel(seasonality_mode="multiplicative").fit(
@@ -171,12 +171,12 @@ fig.savefig(PRESENTATION_DIR / "05_forecast_vs_actuals.png", dpi=150, bbox_inche
 plt.show()
 
 # %% [markdown]
-# ## 7. Lag Analysis (mirrors WW14 format)
+# ## 7. Lag Analysis (mirrors WPR format)
 #
 # Show how forecast accuracy improves as we get closer to the target week.
 # This is the format the team already uses.
 #
-# This matches the WW14 lag-analysis format and shows accuracy degradation as
+# This matches the WPR lag-analysis format and shows accuracy degradation as
 # forecast horizon extends — the same pattern reported there.
 
 # %%
@@ -218,15 +218,15 @@ lag_table = lag_analysis(actuals_indexed, forecasts_by_lag)
 lag_table
 
 # %%
-# Save in the WW14 reporting format: row label = "N week(s)",
+# Save in the WPR reporting format: row label = "N week(s)",
 # columns = "Traditional Error %" and "WMAPE %". Drops the engineering-only n_obs.
-ww14_lag = pd.DataFrame({
+wpr_lag = pd.DataFrame({
     "Lag": [f"{n} week" if n == 1 else f"{n} weeks" for n in lag_table["lag_weeks"]],
     "Traditional Error %": lag_table["traditional_error_pct"].round(2),
     "WMAPE %": lag_table["wmape_pct"].round(2),
 })
-ww14_lag.to_csv(DATA_DIR / "lag_analysis.csv", index=False)
-ww14_lag
+wpr_lag.to_csv(DATA_DIR / "lag_analysis.csv", index=False)
+wpr_lag
 
 # %%
 # Visualize the Lag analysis
@@ -236,7 +236,7 @@ for i, row in lag_table.iterrows():
     ax.text(i, row["wmape_pct"] + 0.3, f"{row['wmape_pct']:.1f}%", ha="center")
 ax.set_xlabel("Forecast Lag (weeks)")
 ax.set_ylabel("WMAPE %")
-ax.set_title("Forecast Accuracy by Lag\n(Mirrors WW14 report's Lag-1 vs Lag-4 comparison)",
+ax.set_title("Forecast Accuracy by Lag\n(Mirrors WPR report's Lag-1 vs Lag-4 comparison)",
              fontsize=14, fontweight="bold")
 ax.grid(True, alpha=0.3, axis="y")
 fig.tight_layout()

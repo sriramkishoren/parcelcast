@@ -109,7 +109,7 @@ If all green, **stop**. Sunday is for shipping.
 Drop saved PNGs from `presentation/` directly. Don't over-design. 18 min/slide.
 
 ### 12:00–12:30 — **SHOCK TEST** + lunch 🌮
-- Imagine sending the project to Pallavi *right now*
+- Imagine sending the project to Sam *right now*
 - Pride or panic? Cut, don't add.
 
 ### 12:30–2:00 — Block 5: Notebook polish
@@ -158,20 +158,20 @@ Send the email Monday morning, NOT Sunday night. Sunday night sends look frantic
 
 ---
 
-## 📨 What to send Pallavi (Monday morning)
+## 📨 What to send Sam (Monday morning)
 
 **Subject:** ParcelCast — quick weekend project on parcel volume forecasting
 
-> Hi Pallavi,
+> Hi Sam,
 >
 > Following up on our conversation — I built a small project this weekend to demonstrate how I'd approach the forecasting work.
 >
-> I used the public M5 Walmart dataset and reframed it as a parcel-forecasting problem: stores → FCs, units → packages via UPP, plus carrier allocation across FedEx / UPS / IP / OnTrac.
+> I used the public M5 retail dataset and reframed it as a parcel-forecasting problem: stores → FCs, units → packages via UPP, plus carrier allocation across FedEx / UPS / IP / OnTrac.
 >
 > The repo walks through:
 > 1. Data quality + cleaning, with an audit log of every transformation
 > 2. Two models (Prophet + LightGBM) evaluated with Traditional Error and WMAPE — the team's metrics
-> 3. A lag-analysis table mirroring the WW14 format
+> 3. A lag-analysis table mirroring the WPR format
 > 4. Three business-application views: FedEx HD contract monitor, OnTrac Tier 2 risk alert, carrier cost-shift simulator
 >
 > Repo: https://github.com/[username]/parcelcast
@@ -186,7 +186,7 @@ Send the email Monday morning, NOT Sunday night. Sunday night sends look frantic
 
 ## 🎤 The ONE sentence to lead the presentation with
 
-> *"Real Walmart M5 data, cleaned with the team's metrics, two models compared, and forecasts mapped to FedEx contract compliance and OnTrac tier monitoring."*
+> *"Public M5 retail data, cleaned with the team's metrics, two models compared, and forecasts mapped to FedEx contract compliance and OnTrac tier monitoring."*
 
 That's it. Don't open with anything longer.
 

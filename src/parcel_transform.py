@@ -3,8 +3,8 @@ Parcel-domain transformations:
   1. Units → Packages via UPP (Units Per Package)
   2. Packages → Per-carrier volumes via allocation shares
 
-UPP is treated as a TIME-VARYING parameter for 1P (declining trend per WW14
-report observation), and a STATIC parameter for WFS. This is the project's
+UPP is treated as a TIME-VARYING parameter for 1P (declining trend per WPR
+report observation), and a STATIC parameter for MP. This is the project's
 key insight: UPP forecast error compounds into package forecast error.
 """
 from __future__ import annotations
@@ -17,10 +17,10 @@ import pandas as pd
 
 UPP_BASELINE = {
     "1P": 2.10,   # Higher = more units bundled per package
-    "WFS": 1.33,  # WFS sellers ship more single-item packages
+    "MP": 1.33,  # Marketplace sellers ship more single-item packages
 }
 
-# 1P UPP is declining ~3% per year (matches WW14 narrative of channel mix shift)
+# 1P UPP is declining ~3% per year (matches WPR narrative of channel mix shift)
 UPP_1P_ANNUAL_DECLINE = 0.03
 
 # ─── Carrier configuration ────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ UPP_1P_ANNUAL_DECLINE = 0.03
 CARRIER_BASE_SHARES = {
     "FedEx": 0.55,
     "UPS": 0.15,
-    "IP": 0.20,    # Walmart's internal "InHome" / GoLocal / first-party last-mile
+    "IP": 0.20,    # Internal/in-house first-party last-mile carrier
     "OnTrac": 0.10,
 }
 
@@ -56,10 +56,10 @@ def get_upp(channel: str, week_start: pd.Timestamp, anchor_date: pd.Timestamp = 
     Return UPP for a given channel at a given week.
 
     1P UPP declines linearly at ~3% per year from the anchor date.
-    WFS UPP is static.
+    MP UPP is static.
     """
-    if channel == "WFS":
-        return UPP_BASELINE["WFS"]
+    if channel == "MP":
+        return UPP_BASELINE["MP"]
 
     if anchor_date is None:
         anchor_date = pd.Timestamp("2011-01-29")  # M5 start date

@@ -24,12 +24,12 @@
 
 ### What it represents
 
-**M5 (Walmart's M-Competition #5 dataset)** — daily unit sales of 30,490 SKUs across 10 Walmart stores in 3 US states (CA, TX, WI), spanning ~5.4 years (Jan 2011 – June 2016). Released as 3 CSVs:
+**The M5 retail dataset (M-Competition #5)** — daily unit sales of 30,490 SKUs across 10 stores in 3 US states (CA, TX, WI), spanning ~5.4 years (Jan 2011 – June 2016). Released as 3 CSVs:
 
 | File | What it is |
 |---|---|
 | `sales_train_evaluation.csv` | The fact table. **Wide format**: one row per SKU, then 1,941 columns `d_1, d_2, …, d_1941` holding unit sales per day. |
-| `calendar.csv` | Lookup table mapping each `d_*` to a real date, the Walmart fiscal week (`wm_yr_wk`), the day of week, and event flags (Easter, SuperBowl, SNAP food-stamp days). |
+| `calendar.csv` | Lookup table mapping each `d_*` to a real date, the retailer's fiscal week (`wm_yr_wk`), the day of week, and event flags (Easter, SuperBowl, SNAP food-stamp days). |
 | `sell_prices.csv` | Weekly sell prices per (store, item). Not used in Notebook 1. |
 
 The "wide" format is unusual — most ML data is "long" (one row per observation). Wide is how OLAP/data-warehouse tables sometimes ship time series, and you have to reshape before modeling.
@@ -48,7 +48,7 @@ For Notebook 1, there is no model yet — but the eventual forecast target is **
 
 ### Business problem
 
-Walmart's parcel team needs to predict **how many packages each carrier will ship in each region/channel each week**, so they can:
+A major retailer's parcel team needs to predict **how many packages each carrier will ship in each region/channel each week**, so they can:
 
 1. Hold carriers accountable to contractual minimums (e.g., FedEx Home Delivery commitments).
 2. Catch over-allocation to capacity-constrained carriers (OnTrac Tier 2 thresholds).
@@ -66,8 +66,8 @@ The actual M5 data is retail sales. We **re-frame** it as a parcel-forecasting p
 |---|---|---|
 | Store (CA_1, TX_2, …) | Fulfillment Center (FC) | Both are physical nodes in a network |
 | State (CA, TX, WI) | Region (WEST, SOUTH, MIDWEST) | Both are geographic groupings |
-| Category FOODS / HOUSEHOLD | Channel **1P** (first-party) | Walmart's own inventory |
-| Category HOBBIES | Channel **WFS** (Walmart Fulfillment Services) | Third-party seller volume |
+| Category FOODS / HOUSEHOLD | Channel **1P** (first-party) | The retailer's own inventory |
+| Category HOBBIES | Channel **MP** (Marketplace) | Third-party seller volume |
 | `Unit Sales` | `Ordered Units` → divided by **UPP** = `Packages` | Sales convert into shipping demand |
 
 This reframing is more than relabeling — it lets us tell a parcel story (carrier allocation, contract compliance, cost shift) using a real, public dataset.
@@ -92,13 +92,13 @@ The forecasting team doesn't care about units sold — they care about **how man
 
 | Channel | UPP baseline | Behavior |
 |---|---|---|
-| **1P** (Walmart's own inventory) | **2.10** | **Time-varying** — declines ~3% per year |
-| **WFS** (third-party sellers) | **1.33** | **Static** |
+| **1P** (the retailer's own inventory) | **2.10** | **Time-varying** — declines ~3% per year |
+| **MP** (third-party Marketplace sellers) | **1.33** | **Static** |
 
 Why these specific numbers:
 
-- **1P > WFS** because Walmart bundles items into shared shipments when a customer orders multiple things. Third-party sellers each ship independently.
-- **WFS closer to 1.0** because each WFS seller fulfills their own orders, so most packages contain just one item.
+- **1P > MP** because the retailer bundles items into shared shipments when a customer orders multiple things. Third-party sellers each ship independently.
+- **MP closer to 1.0** because each Marketplace seller fulfills their own orders, so most packages contain just one item.
 
 ### The "key insight" — 1P UPP declines
 
@@ -145,9 +145,9 @@ Two-step approach:
 
 ### Data transformations in sequence
 
-1. **Time aggregation**: daily → weekly via `wm_yr_wk` (Saturday-to-Friday Walmart fiscal weeks). Done by groupby-sum.
+1. **Time aggregation**: daily → weekly via `wm_yr_wk` (Saturday-to-Friday fiscal weeks). Done by groupby-sum.
 2. **Hierarchy mapping**: `state_id` → `region`, `cat_id` → `channel` via dict-`.map()`.
-3. **Units → Packages**: `packages = units / UPP` — and crucially, UPP for the 1P channel is **time-varying** (3% annual decline), while WFS is static.
+3. **Units → Packages**: `packages = units / UPP` — and crucially, UPP for the 1P channel is **time-varying** (3% annual decline), while MP is static.
 4. **Packages → Carrier volumes**: `carrier_packages = packages × carrier_share`, where `carrier_share` depends on region (OnTrac is heavily WEST, etc.). One row becomes 4 rows (one per carrier).
 5. **Share normalization**: `normalize_shares` divides each share by the group sum so the four carriers add to exactly 1.0 — defending against floating-point drift.
 
@@ -160,9 +160,9 @@ Two-step approach:
 
 | Assumption | Why it's defensible |
 |---|---|
-| HOBBIES → WFS, FOODS+HOUSEHOLD → 1P | Documented, stated as illustrative |
-| UPP = 2.10 (1P), 1.33 (WFS) | Plausible; matches WW14-style numbers |
-| 1P UPP declines 3%/year | Matches the WW14 narrative on channel mix shift |
+| HOBBIES → MP, FOODS+HOUSEHOLD → 1P | Documented, stated as illustrative |
+| UPP = 2.10 (1P), 1.33 (MP) | Plausible; matches WPR-style numbers |
+| 1P UPP declines 3%/year | Matches the WPR narrative on channel mix shift |
 | Carrier shares 55/15/20/10 + regional adjustments | Illustrative; the *structure* of regional variation matters more than the exact %s |
 | OnTrac is West-Coast-heavy | Real-world fact about OnTrac's footprint |
 | Winsorize at 1%/99% | Standard mild-winsorization |
@@ -569,7 +569,7 @@ Detect → log → transform → log again. Reproducible.
 
 ### 8.1 The 90-second project story
 
-> "I built a parcel-volume forecasting prototype on Walmart's M5 dataset. The first notebook is end-to-end data quality: I load 5+ years of daily SKU-level sales, melt from wide to long format, aggregate to weekly fiscal periods aligned with Walmart's calendar, and then apply a domain transformation — units divided by Units-Per-Package (UPP) gives me parcel volume, and a regional carrier-share matrix splits that volume across FedEx, UPS, OnTrac, and an internal carrier. I treat 1P UPP as time-varying with a 3% annual decline because that matches a real observation from Walmart's WW14 weekly reporting.
+> "I built a parcel-volume forecasting prototype on the public M5 retail dataset. The first notebook is end-to-end data quality: I load 5+ years of daily SKU-level sales, melt from wide to long format, aggregate to weekly fiscal periods aligned with the retailer's fiscal calendar, and then apply a domain transformation — units divided by Units-Per-Package (UPP) gives me parcel volume, and a regional carrier-share matrix splits that volume across FedEx, UPS, OnTrac, and an internal carrier. I treat 1P UPP as time-varying with a 3% annual decline because that matches a real observation from a public WPR-style weekly report.
 >
 > The cleaning is conservative — I never delete rows because that breaks the time-series continuity needed downstream. I winsorize extreme volumes at the 1st and 99th percentile, interpolate any missing values within (region, channel, carrier) groups so I don't leak information across series, and renormalize carrier shares so they sum exactly to 1.0. Every transformation writes to an audit log, and after cleaning I run an 8-check validation suite — no missing, no negatives, shares sum to 1, no week gaps, hierarchy coverage, no duplicates — and they all pass.
 >
@@ -593,7 +593,7 @@ A: Additive when seasonal swings are roughly constant in absolute size, multipli
 A: It tests whether the series is stationary — constant mean and variance over time. The null hypothesis is "non-stationary, has a unit root." A p-value below 0.05 lets me reject the null. Important because Prophet and LightGBM are robust to non-stationarity, but classical ARIMA isn't.
 
 **Q: Why fiscal weeks (Saturday-to-Friday) instead of ISO weeks?**
-A: Because the audience operates on Walmart's fiscal calendar and reports weekly volumes that way. Using ISO weeks would mean my numbers don't reconcile against their dashboards.
+A: Because the audience operates on the retailer's fiscal calendar and reports weekly volumes that way. Using ISO weeks would mean my numbers don't reconcile against their dashboards.
 
 **Q: What's Traditional Error and why use it instead of MAPE?**
 A: Traditional Error = (Sum Forecast − Sum Actual) / Sum Actual × 100. It tells you whether you're over- or under-forecasting in aggregate. Standard MAPE explodes when actuals are small or zero, and it hides the *direction* of error. For capacity planning where over- and under-forecasting have asymmetric costs, the directional signal matters more.
@@ -650,7 +650,7 @@ A: Don't delete them silently. I'd log them, build a feature like `is_outlier=Tr
 | `pd.melt` | Pandas operation that converts wide → long. |
 | Categorical dtype | pandas dtype storing unique values once + integer codes per row. Saves memory, speeds equality. |
 | Hierarchical time series | Series organized into a tree (network → region → channel → carrier). |
-| Fiscal week | Business calendar week (Walmart: Sat–Fri); often differs from ISO week. |
+| Fiscal week | Business calendar week (Sat–Fri in this project); often differs from ISO week. |
 | UPP (Units Per Package) | Conversion ratio: packages = units / UPP. |
 | Outlier | A data point far from the bulk of the data (definition depends on the rule). |
 | Quartile (Q1, Q2, Q3) | The 25th, 50th, 75th percentile cutpoints when sorting data. |
@@ -677,8 +677,8 @@ A: Don't delete them silently. I'd log them, build a feature like `is_outlier=Tr
 | Validation suite | Automated post-conditions a cleaned dataset must satisfy. |
 | Data contracts | Formal expectations between data producer and consumer. |
 | Reproducibility | Same input + same code → same output, every time. |
-| Traditional Error | (Sum Forecast − Sum Actual) / Sum Actual × 100. Walmart's primary metric. |
-| WMAPE | Sum(|err|) / Sum(actual). Walmart's secondary metric. |
+| Traditional Error | (Sum Forecast − Sum Actual) / Sum Actual × 100. The team's primary metric. |
+| WMAPE | Sum(|err|) / Sum(actual). The team's secondary metric. |
 
 ---
 

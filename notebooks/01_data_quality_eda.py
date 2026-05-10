@@ -60,7 +60,7 @@ audit = CleaningAuditLog()
 # Mapping applied:
 # - Store → FC
 # - State → Region (CA→WEST, TX→SOUTH, WI→MIDWEST)
-# - Category → Channel (FOODS/HOUSEHOLD → 1P, HOBBIES → WFS)
+# - Category → Channel (FOODS/HOUSEHOLD → 1P, HOBBIES → MP)
 
 # %%
 print("Domain mapping:")
@@ -76,7 +76,7 @@ long_df.head()
 
 # %% [markdown]
 # ## 2. Aggregate to weekly (region × channel × week)
-# Walmart fiscal weeks (Saturday-to-Friday).
+# Retailer fiscal weeks (Saturday-to-Friday).
 
 # %%
 weekly = aggregate_to_weekly(long_df, by=["region", "channel"])
@@ -91,15 +91,15 @@ weekly = convert_units_to_packages(weekly)
 weekly.head()
 
 # %%
-# Show the UPP trend (1P declining, WFS static) — the project's key insight
-CHANNEL_COLORS = {"1P": "steelblue", "WFS": "darkslategray"}
+# Show the UPP trend (1P declining, MP static) — the project's key insight
+CHANNEL_COLORS = {"1P": "steelblue", "MP": "darkslategray"}
 fig, ax = plt.subplots(figsize=(12, 5))
 for ch in weekly["channel"].unique():
     sub = weekly[weekly["channel"] == ch].drop_duplicates("week_start")
     ax.plot(sub["week_start"], sub["upp"], label=ch, linewidth=2,
             color=CHANNEL_COLORS.get(ch, "steelblue"))
 ax.set_title(
-    "UPP (Units Per Package) trend — 1P declining, WFS static\n"
+    "UPP (Units Per Package) trend — 1P declining, MP static\n"
     "Key insight: UPP forecast error compounds into package forecast error",
     fontsize=14, fontweight="bold",
 )

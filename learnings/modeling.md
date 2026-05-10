@@ -26,7 +26,7 @@
 
 ### What business problem we're solving
 
-Walmart's parcel-forecasting team needs to know: **"How many packages will move through the network next week, the week after, and the four weeks after that — broken down by region, channel, and carrier?"**
+A major retailer's parcel-forecasting team needs to know: **"How many packages will move through the network next week, the week after, and the four weeks after that — broken down by region, channel, and carrier?"**
 
 This forecast directly drives:
 
@@ -122,7 +122,7 @@ y(t) = trend(t) × (1 + seasonality(t) + holidays(t)) × ε
 
 1. **Trend**: piecewise linear function with automatic changepoints (where slope changes).
 2. **Seasonality**: Fourier series (sums of sines and cosines) approximating yearly patterns.
-3. **Holidays**: discrete bumps at specified dates. We pass `WALMART_HOLIDAYS` — Black Friday, Cyber Monday, Christmas, Memorial Day, July 4th, Labor Day, BTS_peak — with `lower_window=-3, upper_window=3` (effect spans 3 days before through 3 days after).
+3. **Holidays**: discrete bumps at specified dates. We pass `US_RETAIL_HOLIDAYS` — Black Friday, Cyber Monday, Christmas, Memorial Day, July 4th, Labor Day, BTS_peak — with `lower_window=-3, upper_window=3` (effect spans 3 days before through 3 days after).
 
 Fit using Bayesian inference (Stan under the hood). That's why Prophet gives uncertainty intervals "for free."
 
@@ -261,7 +261,7 @@ Our lag analysis:
 | 3 weeks | −4.82 | 5.24 |
 | 4 weeks | −4.97 | 5.32 |
 
-**Reading**: accuracy degrades monotonically with horizon (~0.44pt WMAPE worse from lag-1 to lag-4). Expected and matches WW14 reporting format.
+**Reading**: accuracy degrades monotonically with horizon (~0.44pt WMAPE worse from lag-1 to lag-4). Expected and matches WPR reporting format.
 
 ---
 
@@ -358,7 +358,7 @@ A series is **stationary** if its statistical properties (mean, variance) don't 
 
 ### Trend
 
-The long-term direction. Walmart's parcel volume trends up over time as e-commerce grows. Prophet models this as piecewise linear; LightGBM captures it implicitly via `lag_52`.
+The long-term direction. The retailer's parcel volume trends up over time as e-commerce grows. Prophet models this as piecewise linear; LightGBM captures it implicitly via `lag_52`.
 
 ### Seasonality
 
@@ -370,7 +370,7 @@ Patterns at non-fixed periods (business cycles, multi-year fluctuations). Distin
 
 ### Holidays / events
 
-Discrete spikes at known dates. Prophet handles via `WALMART_HOLIDAYS`. LightGBM handles via `is_holiday`, `is_peak`, `is_bts` flags.
+Discrete spikes at known dates. Prophet handles via `US_RETAIL_HOLIDAYS`. LightGBM handles via `is_holiday`, `is_peak`, `is_bts` flags.
 
 ---
 
@@ -530,7 +530,7 @@ LightGBM's `feature_importance(importance_type="gain")` — total reduction in l
 
 ### Block J: Lag analysis
 
-Loop over lags 1–4, retrain Prophet at each cutoff, score, save WW14-format CSV.
+Loop over lags 1–4, retrain Prophet at each cutoff, score, save WPR-format CSV.
 
 ### Block K: Save artifacts
 
@@ -542,11 +542,11 @@ Loop over lags 1–4, retrain Prophet at each cutoff, score, save WW14-format CS
 
 ### 10.1 The 90-second story
 
-> "Notebook 2 is the modeling layer of the parcel-forecasting prototype. I take the cleaned weekly package volumes from Notebook 1 — about 270 weeks aggregated to the network level — and I train three models: a 4-week moving-average baseline, Prophet with multiplicative seasonality and Walmart-specific holidays like Black Friday and Cyber Monday, and a global LightGBM model that uses lag features at 1, 2, 4, 8, 12, and 52 weeks plus calendar features, year-over-year growth, and lagged UPP as exogenous signals.
+> "Notebook 2 is the modeling layer of the parcel-forecasting prototype. I take the cleaned weekly package volumes from Notebook 1 — about 270 weeks aggregated to the network level — and I train three models: a 4-week moving-average baseline, Prophet with multiplicative seasonality and US retail holidays like Black Friday and Cyber Monday, and a global LightGBM model that uses lag features at 1, 2, 4, 8, 12, and 52 weeks plus calendar features, year-over-year growth, and lagged UPP as exogenous signals.
 >
 > The split is chronological — last 12 weeks held out — because random shuffles on time series cause leakage. I evaluate using the team's exact metrics: Traditional Error for aggregate bias and WMAPE for point-by-point accuracy. LightGBM wins at 1.55% WMAPE, beating the baseline by 2.4 points and Prophet by 4.3 points. Prophet is structurally pessimistic on this series.
 >
-> I also build a lag analysis that mirrors the WW14 reporting format — for each forecast horizon from 1 to 4 weeks, I retrain Prophet at the corresponding historical cutoff and measure accuracy. The pattern is monotonic degradation, which is the expected and defensible behavior."
+> I also build a lag analysis that mirrors the WPR reporting format — for each forecast horizon from 1 to 4 weeks, I retrain Prophet at the corresponding historical cutoff and measure accuracy. The pattern is monotonic degradation, which is the expected and defensible behavior."
 
 ### 10.2 Q&A
 
@@ -578,7 +578,7 @@ A: Traditional Error is sum of forecast minus sum of actual, divided by sum of a
 A: It surprised me at first because intuitively I'd expect lag_1 to dominate. The reason lag_8 ranks high is that this is a relatively short test set on a series with strong seasonal structure, and the boosting algorithm finds that lag_8 partitions the data well at multiple split points. The bigger story is which features have near-zero importance: most calendar features are essentially unused, because lag_52 already captures yearly seasonality. The model converges on the lags a forecaster would intuitively use.
 
 **Q: What's lag analysis and why does the team care about it?**
-A: Lag analysis measures forecast accuracy at different planning horizons. If the data lake is one week behind, you can only do lag-1 forecasts; some processes need 4-week lookaheads. So I report Traditional Error and WMAPE separately for lag-1 through lag-4 forecasts, generated by retraining the model at each historical cutoff. The expected pattern is monotonic accuracy degradation as the horizon extends — exactly what mine shows. That's the same format the team's existing WW14 report uses.
+A: Lag analysis measures forecast accuracy at different planning horizons. If the data lake is one week behind, you can only do lag-1 forecasts; some processes need 4-week lookaheads. So I report Traditional Error and WMAPE separately for lag-1 through lag-4 forecasts, generated by retraining the model at each historical cutoff. The expected pattern is monotonic accuracy degradation as the horizon extends — exactly what mine shows. That's the same format the team's existing WPR report uses.
 
 **Q: When would you choose Prophet over LightGBM, even if Prophet has worse accuracy?**
 A: Three situations. First, when interpretability matters more than accuracy — Prophet decomposes into named components. Second, when uncertainty intervals matter — Prophet provides them natively. Third, when you have very little data — Prophet's strong priors on trend and seasonality help in low-data regimes where LightGBM would overfit.

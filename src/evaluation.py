@@ -6,7 +6,7 @@ Evaluation metrics — using the team's exact metrics:
   - WMAPE: Weighted Mean Absolute Percentage Error
            Secondary metric. Captures absolute accuracy.
   - Lag Analysis: forecast accuracy at lag-1, lag-2, lag-3, lag-4 horizons
-                  (mirrors WW14 report format)
+                  (mirrors WPR report format)
 """
 from __future__ import annotations
 

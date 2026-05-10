@@ -4,7 +4,7 @@ Load M5 data and map M5 hierarchy → ParcelCast (parcel-forecasting) hierarchy.
 The mapping is the core "domain reframing" of the project:
   Store    → FC (Fulfillment Center)
   State    → Shipping Region
-  Category → Channel (1P / WFS)
+  Category → Channel (1P / MP)
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 CATEGORY_TO_CHANNEL = {
     "FOODS": "1P",
     "HOUSEHOLD": "1P",
-    "HOBBIES": "WFS",  # Treat hobbies as 3rd-party seller volume
+    "HOBBIES": "MP",  # Treat hobbies as 3rd-party Marketplace volume
 }
 
 # State → Region (1:1 mapping, just terminology)
@@ -102,7 +102,7 @@ def map_to_parcel_hierarchy(df: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate_to_weekly(df: pd.DataFrame, by: list[str]) -> pd.DataFrame:
     """
-    Aggregate daily units to fiscal weeks (Saturday-to-Friday, matching Walmart).
+    Aggregate daily units to fiscal weeks (Saturday-to-Friday).
 
     `by` is the grouping spec, e.g. ['region', 'channel'].
     """

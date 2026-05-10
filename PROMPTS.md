@@ -106,15 +106,15 @@ The lag analysis cell in notebook 02 is fitting Prophet 48 times and taking >10 
 The LightGBM scorecard shows worse WMAPE than Prophet. This is expected on weekly aggregated data with strong yearly seasonality.
 
 Add a markdown cell after the scorecard explaining:
-"On weekly aggregated network-level volume, Prophet's yearly seasonality + Walmart holidays component captures most of the signal. Tree-based ML models like LightGBM typically show their value at finer granularity (daily, FC-level, or SKU-level) where complex feature interactions matter more. This is a finding, not a failure — and it directly informs where we'd invest modeling effort next: at the FC × channel × week level."
+"On weekly aggregated network-level volume, Prophet's yearly seasonality + US retail holidays component captures most of the signal. Tree-based ML models like LightGBM typically show their value at finer granularity (daily, FC-level, or SKU-level) where complex feature interactions matter more. This is a finding, not a failure — and it directly informs where we'd invest modeling effort next: at the FC × channel × week level."
 
 Frame it as a finding in the deck too.
 ```
 
-### Step 2.4 — Lag analysis matches WW14 format
+### Step 2.4 — Lag analysis matches WPR format
 
 ```
-Show me the saved lag_analysis.csv. The format should mirror what WW14 reports use: rows = lag (1, 2, 3, 4 weeks), columns = Traditional Error % and WMAPE %. If the format is off, fix it. Add a sentence to the markdown above this cell calling out: "This matches the WW14 lag-analysis format and shows accuracy degradation as forecast horizon extends — the same pattern reported there."
+Show me the saved lag_analysis.csv. The format should mirror what WPR reports use: rows = lag (1, 2, 3, 4 weeks), columns = Traditional Error % and WMAPE %. If the format is off, fix it. Add a sentence to the markdown above this cell calling out: "This matches the WPR lag-analysis format and shows accuracy degradation as forecast horizon extends — the same pattern reported there."
 ```
 
 ---
@@ -139,7 +139,7 @@ The FedEx contract monitor shows monthly forecasted volumes [paste values]. Comp
 Adjust the constants FEDEX_HD_CONTRACT_MIN_MONTHLY_PACKAGES and FEDEX_HD_CONTRACT_MAX_MONTHLY_PACKAGES so that:
 - The forecasted monthly volumes fall inside the band roughly 70% of the time
 - Some months are flagged as BELOW MIN or ABOVE MAX (otherwise the monitor isn't doing anything)
-- Update the threshold comments to clarify these are rescaled from real WW14 numbers to fit the M5 dataset scale
+- Update the threshold comments to clarify these are rescaled from real WPR numbers to fit the M5 dataset scale
 
 Same for OnTrac Tier 2 — ONTRAC_TIER_2_WEEKLY_THRESHOLD should be set so the monitor occasionally fires.
 ```
@@ -206,7 +206,7 @@ Don't change any logic — only narrative quality. Show me a diff summary before
 Update README.md to add a "Screenshots" section after the TL;DR. Embed these images from presentation/ in markdown:
 - 02_decomposition.png as "Time series decomposition"
 - 05_forecast_vs_actuals.png as "Forecast vs actuals (12-week test)"
-- 06_lag_analysis.png as "Lag analysis (matches WW14 format)"
+- 06_lag_analysis.png as "Lag analysis (matches WPR format)"
 - 09_executive_dashboard.png as "Executive dashboard"
 
 Use relative paths like ![alt](presentation/02_decomposition.png).
@@ -255,10 +255,10 @@ I'm short on time. Apply the cut list from SATURDAY_PLAN.md:
 Commit with message: "Apply weekend cut list — Prophet-only, FedEx + OnTrac monitors only"
 ```
 
-### "Help me draft the email to Pallavi"
+### "Help me draft the email to Sam"
 
 ```
-Draft a Monday-morning email to Pallavi (Director, Parcel Forecasting) sharing this project. Use the template in SATURDAY_PLAN.md as a starting point but personalize based on what actually shipped (check git log, look at README, look at presentation/). Three short paragraphs. No hard sell. Include the GitHub URL.
+Draft a Monday-morning email to Sam (Director of Parcel Forecasting at a major retailer) sharing this project. Use the template in SATURDAY_PLAN.md as a starting point but personalize based on what actually shipped (check git log, look at README, look at presentation/). Three short paragraphs. No hard sell. Include the GitHub URL.
 ```
 
 ---

@@ -1,10 +1,10 @@
 # 📦 ParcelCast — Parcel Volume Forecasting & Carrier Optimization
 
-> End-to-end forecasting project demonstrating data quality rigor, time-series modeling, and business-decision integration — built on real Walmart M5 data, framed for parcel-volume use cases.
+> End-to-end forecasting project demonstrating data quality rigor, time-series modeling, and business-decision integration — built on the public M5 retail dataset, framed for parcel-volume use cases.
 
 ## TL;DR
 
-Real Walmart M5 data, cleaned with the team's metrics (Traditional Error + WMAPE), two models compared (Prophet + LightGBM), and forecasts mapped to FedEx contract compliance and OnTrac tier monitoring.
+Public M5 retail dataset, cleaned with the team's metrics (Traditional Error + WMAPE), two models compared (Prophet + LightGBM), and forecasts mapped to FedEx contract compliance and OnTrac tier monitoring.
 
 ## The Domain Mapping
 
@@ -16,11 +16,11 @@ The project re-frames M5 retail sales data as a parcel-forecasting problem:
 | Store (CA_1, TX_2, …) | Fulfillment Center (FC) |
 | State (CA, TX, WI) | Shipping Region |
 | Category: FOODS, HOUSEHOLD | Channel: 1P (first-party) |
-| Category: HOBBIES | Channel: WFS (3P seller) |
+| Category: HOBBIES | Channel: MP (3P Marketplace seller) |
 | Units ÷ UPP | Package Volume |
 | Calendar Events | Holiday demand spikes |
 
-UPP (Units Per Package) conversion — 1P ≈ 2.1, WFS ≈ 1.33 — turns unit forecasts into package forecasts. Package volume is then split across carriers (FedEx ~55%, UPS ~15%, IP ~20%, OnTrac ~10%) with regional variation.
+UPP (Units Per Package) conversion — 1P ≈ 2.1, MP ≈ 1.33 — turns unit forecasts into package forecasts. Package volume is then split across carriers (FedEx ~55%, UPS ~15%, IP ~20%, OnTrac ~10%) with regional variation.
 
 ## Notebook Structure
 
@@ -33,14 +33,14 @@ UPP (Units Per Package) conversion — 1P ≈ 2.1, WFS ≈ 1.33 — turns unit f
 ## Key Findings (filled in after run)
 
 - **Best model on weekly data:** _TBD_ (Prophet vs LightGBM)
-- **Lag-1 vs Lag-4 accuracy delta:** _TBD_ (mirrors WW14 format)
+- **Lag-1 vs Lag-4 accuracy delta:** _TBD_ (mirrors WPR format)
 - **FedEx HD contract status (forecasted next month):** _TBD_
 - **OnTrac Tier 2 risk window:** _TBD_
 - **Cost-shift opportunity (5% FedEx → IP):** _TBD_
 
 ## Critical Insight: UPP Drives Package Forecast Error
 
-Package volume = Units ÷ UPP. UPP is itself trending (declining for 1P per WW14). This means **UPP forecast error compounds into package forecast error** — a model that predicts units perfectly but assumes static UPP will systematically over- or under-forecast packages. This is treated as an exogenous feature in the LightGBM model and called out explicitly in the deck.
+Package volume = Units ÷ UPP. UPP is itself trending (declining for 1P per WPR). This means **UPP forecast error compounds into package forecast error** — a model that predicts units perfectly but assumes static UPP will systematically over- or under-forecast packages. This is treated as an exogenous feature in the LightGBM model and called out explicitly in the deck.
 
 ## Setup
 
@@ -83,7 +83,7 @@ Python · pandas · LightGBM · Prophet · statsmodels · plotly · matplotlib
 
 ## Caveats
 
-This is a weekend portfolio project. Carrier shares, UPP ratios, and cost-per-package figures are **illustrative assumptions** based on public WW14-style references — they're labeled clearly and meant to demonstrate methodology, not represent real Walmart numbers.
+This is a weekend portfolio project. Carrier shares, UPP ratios, and cost-per-package figures are **illustrative assumptions** based on public WPR-style references — they're labeled clearly and meant to demonstrate methodology, not real operational numbers from any specific company.
 
 ---
 

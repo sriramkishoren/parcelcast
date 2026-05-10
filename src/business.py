@@ -16,7 +16,7 @@ import pandas as pd
 # Illustrative; document as assumptions in the deck.
 #
 # Thresholds are scaled to the M5-derived demo dataset (~90K weekly FedEx
-# packages). In a production deployment against real Walmart parcel volume,
+# packages). In a production deployment against real retailer-scale parcel volume,
 # replace with the operating thresholds (~19.5M / ~26.8M monthly for FedEx HD,
 # ~850K weekly for OnTrac Tier 2).
 
