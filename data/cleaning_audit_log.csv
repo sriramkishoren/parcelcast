@@ -1,4 +1,4 @@
 timestamp,action,column,reason,before,after
-2026-05-11T06:03:28,winsorize,carrier_packages,Cap extreme outliers; preserves time-series continuity,"{'min': np.float64(81.76399548093029), 'max': np.float64(32573.244674097157), 'mean': np.float64(5439.23)}","{'min': np.float64(114.70558477256581), 'max': np.float64(27341.020397710567), 'mean': np.float64(5419.14)}"
-2026-05-11T06:03:28,interpolate,carrier_packages,Linear interpolation preserves temporal patterns; mean fill would destroy them,{'missing': 0},{'missing': 0}
-2026-05-11T06:03:28,normalize_shares,carrier_share,Ensure carrier shares sum to exactly 1.0 per group,{'groups_failing_check': 0},{'groups_failing_check': 0}
+2026-05-11T06:16:30,winsorize,carrier_packages,Cap extreme outliers; preserves time-series continuity,"{'min': np.float64(81.76399548093029), 'max': np.float64(32573.244674097157), 'mean': np.float64(5439.23)}","{'min': np.float64(114.70558477256581), 'max': np.float64(27341.020397710567), 'mean': np.float64(5419.14)}"
+2026-05-11T06:16:30,interpolate,carrier_packages,Linear interpolation preserves temporal patterns; mean fill would destroy them,{'missing': 0},{'missing': 0}
+2026-05-11T06:16:30,normalize_shares,carrier_share,Ensure carrier shares sum to exactly 1.0 per group,{'groups_failing_check': 0},{'groups_failing_check': 0}
