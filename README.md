@@ -6,6 +6,24 @@
 
 Public M5 retail dataset, cleaned with the team's metrics (Traditional Error + WMAPE), two models compared (Prophet + LightGBM), and forecasts mapped to FedEx contract compliance and OnTrac tier monitoring.
 
+## Screenshots
+
+**Time series decomposition**
+
+![Time series decomposition](presentation/02_decomposition.png)
+
+**Forecast vs actuals (12-week test)**
+
+![Forecast vs actuals (12-week test)](presentation/05_forecast_vs_actuals.png)
+
+**Lag analysis (matches WPR format)**
+
+![Lag analysis (matches WPR format)](presentation/06_lag_analysis.png)
+
+**Executive dashboard**
+
+![Executive dashboard](presentation/09_executive_dashboard.png)
+
 ## The Domain Mapping
 
 The project re-frames M5 retail sales data as a parcel-forecasting problem:
@@ -30,13 +48,13 @@ UPP (Units Per Package) conversion — 1P ≈ 2.1, MP ≈ 1.33 — turns unit fo
 | **02_modeling.ipynb** | Feature engineering → baseline (4wk MA) → Prophet → LightGBM → Traditional Error + WMAPE → lag analysis table → scorecard | Demonstrates modeling and team-aligned evaluation |
 | **03_business_applications.ipynb** | FedEx HD contract monitor → OnTrac Tier 2 risk alert → carrier cost optimizer → executive dashboard | Connects forecasts to actual decisions |
 
-## Key Findings (filled in after run)
+## Key Findings
 
-- **Best model on weekly data:** _TBD_ (Prophet vs LightGBM)
-- **Lag-1 vs Lag-4 accuracy delta:** _TBD_ (mirrors WPR format)
-- **FedEx HD contract status (forecasted next month):** _TBD_
-- **OnTrac Tier 2 risk window:** _TBD_
-- **Cost-shift opportunity (5% FedEx → IP):** _TBD_
+- **Best model on weekly data:** **LightGBM** at **1.55% WMAPE / −0.64% Traditional Error** — beats the 4-week MA baseline (3.96% WMAPE) by 2.4 pts and Prophet (5.88% WMAPE) by 4.3 pts on the 12-week held-out test.
+- **Lag-1 vs Lag-4 accuracy delta:** WMAPE degrades from **4.88% at lag-1 to 5.32% at lag-4** — graceful monotonic decay across all 4 horizons (mirrors WPR reporting format).
+- **FedEx HD contract status (next forecasted month):** **ABOVE MAXIMUM** for April 2016 by **~26K packages** — recommended action: pre-shift volume to UPS / IP / OnTrac before month-end.
+- **OnTrac Tier 2 risk window:** rolling 6-week avg crossed the Tier 2 threshold (14,500 packages/week) the week of **2016-05-07** — recommend reallocating OnTrac volume to IP or UPS.
+- **Cost-shift opportunity (5% FedEx+UPS → IP):** **$14,398/week** in carrier-spend savings = **~$749K/year** at illustrative cost-per-package rates.
 
 ## Critical Insight: UPP Drives Package Forecast Error
 
