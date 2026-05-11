@@ -24,6 +24,20 @@ Public M5 retail dataset, cleaned with the team's metrics (Traditional Error + W
 
 ![Executive dashboard](presentation/09_executive_dashboard.png)
 
+## Dataset
+
+This project uses the **M5 Forecasting — Accuracy** dataset from the M-Competition series, sponsored by Walmart and hosted on Kaggle. It contains daily unit sales for 30,490 SKUs across 10 stores in 3 US states (CA, TX, WI), spanning Jan 2011 – Jun 2016 (~5.4 years of history).
+
+**Source:** [kaggle.com/competitions/m5-forecasting-accuracy](https://www.kaggle.com/competitions/m5-forecasting-accuracy/overview)
+
+Three CSVs from the Kaggle download are used by this project:
+
+- `sales_train_evaluation.csv` — daily unit sales in wide format (one row per SKU × 1,941 day columns)
+- `calendar.csv` — date / fiscal-week / event mapping
+- `sell_prices.csv` — weekly sell prices per (store, item)
+
+The raw files are **not committed** (each is large and freely available from Kaggle). See [Setup](#setup) for the download command.
+
 ## The Domain Mapping
 
 The project re-frames M5 retail sales data as a parcel-forecasting problem:
