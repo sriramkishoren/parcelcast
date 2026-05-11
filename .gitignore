@@ -25,6 +25,7 @@ notebooks/*.executed.ipynb
 # Local-only working docs (not for the public repo)
 PROMPTS.md
 SATURDAY_PLAN.md
+learnings/
 
 # OS
 .DS_Store
