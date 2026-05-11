@@ -50,7 +50,7 @@ Report findings. Do not modify any files.
 ### Step 1.1 — Convert and run
 
 ```
-Convert notebooks/01_data_quality_eda.py to notebooks/01_data_quality_eda.ipynb using jupytext, then execute it cell by cell using `jupyter nbconvert --to notebook --execute`. If it fails at any step, stop, report the error, and propose a fix before applying.
+Convert notebooks/01_data_quality_eda.py to notebooks/01_data_quality_eda.ipynb using jupytext, then execute it in place with `jupyter nbconvert --to notebook --execute --inplace notebooks/01_data_quality_eda.ipynb` so the outputs land in the source file (this is what gets committed to GitHub for inline rendering). If it fails at any step, stop, report the error, and propose a fix before applying.
 ```
 
 ### Step 1.2 — If load step is slow

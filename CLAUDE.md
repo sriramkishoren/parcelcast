@@ -56,7 +56,7 @@ parcelcast/
 ### Code style
 - Python 3.10+ syntax (uses `dict[str, ...]` type hints)
 - Modules export functions/classes; notebooks orchestrate
-- Notebooks are stored as jupytext `.py` files (percent format) so they diff cleanly in git. Convert with `jupytext --to ipynb notebooks/*.py`
+- Notebooks are stored as jupytext `.py` files (percent format) so they diff cleanly in git. Convert with `jupytext --to ipynb notebooks/*.py`, then execute outputs into the `.ipynb` file with `jupyter nbconvert --to notebook --execute --inplace notebooks/*.ipynb` so GitHub renders the results inline
 - All chart-saving paths route through `Path.cwd().parent / "presentation"`
 - All data artifacts go to `Path.cwd().parent / "data"` as parquet (or CSV when human-readable)
 
