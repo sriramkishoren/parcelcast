@@ -22,5 +22,9 @@ notebooks/*.executed.ipynb
 # they're the project's headline results, viewable directly on GitHub.
 # Charts in presentation/*.png ARE committed for the same reason.
 
+# Local-only working docs (not for the public repo)
+PROMPTS.md
+SATURDAY_PLAN.md
+
 # OS
 .DS_Store
