@@ -1,0 +1,4 @@
+model,traditional_error_pct,wmape_pct,rank_wmape
+LightGBM,-0.64,1.55,1
+Baseline (4wk MA),-1.86,3.96,2
+Prophet,-5.56,5.88,3

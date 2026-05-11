@@ -1,0 +1,9 @@
+check,pass,detail
+packages: no missing,True,0 missing
+packages: no negatives,True,0 negative
+carrier shares sum to 1.0,True,0 groups fail
+carrier_packages reconcile to total,True,
+weeks: no gaps,True,
+upp: in plausible range,True,0 out of range
+hierarchy coverage,True,"regions=3, channels=2"
+"no duplicate (region, channel, carrier, week)",True,0 dups

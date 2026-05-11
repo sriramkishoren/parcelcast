@@ -8,14 +8,10 @@
 # # 📦 ParcelCast — Notebook 2
 # ## Modeling: Baseline / Prophet / LightGBM
 #
-# **Purpose:** Build and compare forecasting models using the parcel team's
-# exact metrics (Traditional Error + WMAPE) plus a lag analysis that mirrors
-# the WPR report format.
-#
-# **Models:**
-# 1. **4-week MA** — naive baseline, the floor
-# 2. **Prophet** — yearly seasonality + US retail holidays
-# 3. **LightGBM** — global model with lag/calendar/UPP features
+# **What this notebook does:** Trains three forecasting models on the cleaned
+# weekly volumes from Notebook 1, evaluates them with the team's exact metrics
+# (Traditional Error + WMAPE), and produces a lag-analysis table mirroring the
+# WPR reporting format. Outputs a forecast parquet for the business notebook.
 
 # %%
 import sys
@@ -40,6 +36,7 @@ TEST_WEEKS = 12  # Hold out last 12 weeks for evaluation
 
 # %% [markdown]
 # ## 1. Load cleaned data
+# Reads the per-(region, channel, week) parquet produced by Notebook 1.
 
 # %%
 weekly = pd.read_parquet(DATA_DIR / "weekly_region_channel.parquet")
@@ -47,8 +44,12 @@ weekly["week_start"] = pd.to_datetime(weekly["week_start"])
 print(f"Loaded {len(weekly):,} rows")
 weekly.head()
 
+# %% [markdown]
+# ### Aggregate to network level + chronological train/test split
+# Three of our models forecast network total. We hold out the last 12 weeks
+# chronologically (no shuffling — that would leak future into past).
+
 # %%
-# Aggregate to network-level weekly packages (across regions/channels)
 network = (
     weekly.groupby("week_start", as_index=False)
     .agg(packages=("packages", "sum"), upp=("upp", "mean"))
@@ -61,6 +62,8 @@ print(f"Train: {len(train)} weeks, Test: {len(test)} weeks")
 
 # %% [markdown]
 # ## 2. Baseline: 4-week moving average
+# Every more-complex model has to clear this floor to justify its complexity.
+# Without a baseline, "1.55% WMAPE" is a number with no anchor.
 
 # %%
 baseline = MovingAverageBaseline(window=4).fit(train, target_col="packages")
@@ -70,6 +73,9 @@ print(f"Baseline metrics: {baseline_metrics}")
 
 # %% [markdown]
 # ## 3. Prophet with US retail holidays
+# Multiplicative seasonality because retail seasonal swings scale with the
+# level of the series (a 20% Black Friday lift in 2016 moves more units than
+# the same percentage lift in 2011). Holidays come pre-configured in `src/models.py`.
 
 # %%
 prophet = ProphetModel(seasonality_mode="multiplicative").fit(
@@ -82,12 +88,19 @@ print(f"Prophet metrics: {prophet_metrics}")
 
 # %% [markdown]
 # ## 4. LightGBM (global model — all region × channel series)
+# A single model trained across all series with group identifiers as features.
+# This lets it learn cross-series patterns and use lag/calendar/UPP features
+# that Prophet structurally can't accept.
+
+# %% [markdown]
+# ### Build the feature matrix
+# Adds lag features (1, 2, 4, 8, 12, 52), YoY growth, calendar features, and
+# lagged UPP. Bare `upp` is excluded — it's used in computing the target so
+# would leak.
 
 # %%
-# Build feature set on the disaggregated data
 featured = build_feature_set(weekly, target_col="packages")
 feature_cols = [c for c in get_feature_columns(featured) if c not in {"upp"}]
-# (Drop bare `upp` to avoid leakage with target since UPP is used in the conversion)
 
 # Train/test split — same date cutoff as Prophet
 cutoff_date = train["week_start"].max()
@@ -96,6 +109,11 @@ lgbm_test = featured[featured["week_start"] > cutoff_date]
 
 print(f"LightGBM train: {len(lgbm_train):,} rows, test: {len(lgbm_test):,} rows")
 print(f"Features ({len(feature_cols)}): {feature_cols}")
+
+# %% [markdown]
+# ### Fit and aggregate predictions to network level
+# LightGBM predicts per (region, channel) row; we sum to network total so all
+# three models can be compared on the same axis.
 
 # %%
 lgbm = LightGBMForecaster()
@@ -127,6 +145,8 @@ plt.show()
 
 # %% [markdown]
 # ## 5. Model Scorecard
+# Compare all three models on the same test set with the same metrics.
+# WMAPE rank tells us which to ship; Traditional Error tells us the bias direction.
 
 # %%
 scorecard = build_scorecard(
@@ -138,6 +158,10 @@ scorecard = build_scorecard(
     },
 )
 scorecard
+
+# %% [markdown]
+# ### Persist the scorecard
+# The business notebook reads this CSV to render Panel 3 of the executive dashboard.
 
 # %%
 scorecard.to_csv(DATA_DIR / "model_scorecard.csv", index=False)
@@ -172,18 +196,16 @@ plt.show()
 
 # %% [markdown]
 # ## 7. Lag Analysis (mirrors WPR format)
-#
-# Show how forecast accuracy improves as we get closer to the target week.
-# This is the format the team already uses.
-#
-# This matches the WPR lag-analysis format and shows accuracy degradation as
-# forecast horizon extends — the same pattern reported there.
+# Forecast accuracy at horizons 1–4 weeks. This matches the WPR reporting
+# format and shows the expected monotonic degradation as horizon extends.
+
+# %% [markdown]
+# ### Define the rolling lag-N backtest
+# For each test week `t`, retrain the model on data ending `t − N` weeks earlier
+# and predict `t`. This simulates how the model would have performed under
+# a real `N`-week-ahead planning cadence.
 
 # %%
-# For each lag in {1,2,3,4}, generate a "rolling lag-N forecast":
-# at each week t, predict t using the model trained on data up to t-N.
-# Simplified version: use Prophet, since it's the strongest baseline.
-
 def rolling_lag_forecast(series_df: pd.DataFrame, lag: int, n_test_weeks: int) -> pd.Series:
     """For each test week, forecast it from data ending `lag` weeks earlier."""
     preds = []
@@ -205,8 +227,12 @@ def rolling_lag_forecast(series_df: pd.DataFrame, lag: int, n_test_weeks: int) -
     return pd.Series(preds, index=dates, name=f"lag_{lag}_forecast")
 
 
+# %% [markdown]
+# ### Run the backtest at lags 1–4
+# Uses Prophet (refit at each cutoff). LightGBM equivalents would require
+# refitting the global feature pipeline; out of scope for this prototype.
+
 # %%
-# Rolling lag forecasts (this takes a few minutes — narrow the test window if needed)
 LAGS = [1, 2, 3, 4]
 forecasts_by_lag = {}
 for lag in LAGS:
@@ -217,9 +243,12 @@ actuals_indexed = network.set_index("week_start")["packages"].tail(TEST_WEEKS)
 lag_table = lag_analysis(actuals_indexed, forecasts_by_lag)
 lag_table
 
+# %% [markdown]
+# ### Save in the WPR reporting format
+# Row labels read as "N week(s)"; columns are exactly Traditional Error % and
+# WMAPE %. The engineering-only `n_obs` column is dropped for the report.
+
 # %%
-# Save in the WPR reporting format: row label = "N week(s)",
-# columns = "Traditional Error %" and "WMAPE %". Drops the engineering-only n_obs.
 wpr_lag = pd.DataFrame({
     "Lag": [f"{n} week" if n == 1 else f"{n} weeks" for n in lag_table["lag_weeks"]],
     "Traditional Error %": lag_table["traditional_error_pct"].round(2),
@@ -228,8 +257,12 @@ wpr_lag = pd.DataFrame({
 wpr_lag.to_csv(DATA_DIR / "lag_analysis.csv", index=False)
 wpr_lag
 
+# %% [markdown]
+# ### Visualize the lag-vs-accuracy curve
+# The bar chart makes the accuracy degradation immediately readable —
+# the version that goes into the deck.
+
 # %%
-# Visualize the Lag analysis
 fig, ax = plt.subplots(figsize=(12, 5))
 ax.bar(lag_table["lag_weeks"].astype(str), lag_table["wmape_pct"], color="steelblue")
 for i, row in lag_table.iterrows():
@@ -245,6 +278,8 @@ plt.show()
 
 # %% [markdown]
 # ## 8. Save Prophet forecast for the business notebook
+# Persist with the column names Notebook 3 expects (`packages_forecast`,
+# `packages_low`, `packages_high`). Prophet provides the CI bands natively.
 
 # %%
 prophet_forecast["week_start"] = prophet_forecast["ds"]
@@ -258,7 +293,25 @@ print("Saved Prophet forecast for business notebook.")
 
 # %% [markdown]
 # ## 9. Feature documentation table (for the deck)
+# Each feature paired with a one-line business justification — useful as a
+# slide appendix when an interviewer asks "why these features?"
 
 # %%
 feature_table = get_feature_table(feature_cols)
 feature_table
+
+# %% [markdown]
+# ## ✅ Done
+#
+# Notebook 2 produced 3 artifacts in `data/` and 3 charts in `presentation/`.
+# The forecast parquet is now ready for the business application notebook.
+
+# %%
+print("=" * 60)
+print("✅ Notebook 2 complete")
+print("=" * 60)
+print("data/         model_scorecard.csv, lag_analysis.csv, network_forecast.parquet")
+print("presentation/ 04_feature_importance.png, 05_forecast_vs_actuals.png, 06_lag_analysis.png")
+print(f"Best model:   {scorecard.iloc[0]['model']} "
+      f"(WMAPE {scorecard.iloc[0]['wmape_pct']:.2f}%, "
+      f"Traditional Error {scorecard.iloc[0]['traditional_error_pct']:.2f}%)")

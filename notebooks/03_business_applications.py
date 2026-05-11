@@ -8,17 +8,10 @@
 # # 📦 ParcelCast — Notebook 3
 # ## Business Application Layer
 #
-# **Purpose:** Translate forecasts into decisions. This is what separates
-# "I built a forecasting model" from "I built a forecasting product."
-#
-# **What's here:**
-# 1. **FedEx HD Monthly Contract Monitor** — projects monthly volumes vs the
-#    ~$19.5M-$26.8M contract band, flags status, recommends action.
-# 2. **OnTrac Tier 2 Risk Alert** — rolling-avg breach detection, projects
-#    forward 4 weeks, flags the breach week.
-# 3. **Carrier Cost-Shift Simulator** — what does it cost to shift 5% of
-#    volume from FedEx/UPS to IP? Annualized savings.
-# 4. **Executive 4-panel dashboard** — single image for the deck.
+# **What this notebook does:** Translates the forecast from Notebook 2 into
+# decisions — a FedEx contract compliance monitor, an OnTrac Tier 2 risk alert,
+# a carrier cost-shift simulator, and a single 4-panel executive dashboard
+# ready to drop into the deck.
 
 # %%
 import sys
@@ -47,12 +40,20 @@ DATA_DIR = Path.cwd().parent / "data"
 
 # %% [markdown]
 # ## 1. Load forecast and historical carrier volumes
+# We need both: history gives context for the forecast chart, and the latest
+# week's actuals seed the cost simulator.
+
+# %% [markdown]
+# ### Network forecast (from Notebook 2)
 
 # %%
 forecast = pd.read_parquet(DATA_DIR / "network_forecast.parquet")
 forecast["week_start"] = pd.to_datetime(forecast["week_start"])
 print(f"Forecast: {len(forecast)} weeks")
 forecast.head()
+
+# %% [markdown]
+# ### Historical carrier volumes (from Notebook 1)
 
 # %%
 carrier_history = pd.read_parquet(DATA_DIR / "weekly_network_volumes.parquet")
@@ -80,6 +81,9 @@ forecast_wide.head()
 
 # %% [markdown]
 # ## 3. FedEx HD Monthly Contract Monitor
+# Contracts have $$ consequences in both directions: under-min triggers
+# shortfall penalties (paying for unused capacity), over-max triggers SLA
+# breaches. Catching either 8 weeks ahead is forecasting's highest-ROI use case.
 
 # %%
 fedex_status = fedex_contract_monitor(
@@ -90,8 +94,12 @@ fedex_status = fedex_contract_monitor(
 )
 fedex_status
 
+# %% [markdown]
+# ### Persist + visualize the contract band
+# Save the status table for the dashboard, then render the bar-vs-band chart
+# that makes ABOVE/BELOW months immediately readable.
+
 # %%
-# Save and visualize
 fedex_status.to_csv(DATA_DIR / "fedex_contract_status.csv", index=False)
 
 fig, ax = plt.subplots(figsize=(10, 5))
@@ -109,9 +117,12 @@ plt.show()
 
 # %% [markdown]
 # ## 4. OnTrac Tier 2 Risk Alert
+# Tier 2 is a cost trigger, not a contract violation — once you cross it,
+# per-package costs jump for the period. We monitor the 6-week rolling avg
+# (smooths single-week spikes) and project 4 weeks forward to alert before
+# the breach actually happens.
 
 # %%
-# Build OnTrac historical weekly series (sum across regions)
 ontrac_history = (
     carrier_history[carrier_history["carrier"] == "OnTrac"]
     .groupby("week_start", as_index=False)["carrier_packages"].sum()
@@ -128,8 +139,13 @@ print("OnTrac Tier 2 Alert:")
 for k, v in alert.items():
     print(f"  {k}: {v}")
 
+# %% [markdown]
+# ### Visualize with risk zone shading
+# History (solid), 4-week projection (dashed), rolling avg (orange line),
+# threshold (red dashed). The red shaded zone above the threshold makes the
+# breach immediately visible.
+
 # %%
-# Visualize with risk zone
 fig, ax = plt.subplots(figsize=(12, 5))
 hist_mask = ~ontrac_full.get("is_projection", pd.Series(False, index=ontrac_full.index)).fillna(False)
 ax.plot(
@@ -163,11 +179,16 @@ plt.show()
 
 # %% [markdown]
 # ## 5. Carrier Cost-Shift Simulator
-#
-# What if we shift 5% of FedEx + UPS volume to IP (cheaper internal carrier)?
+# Every alert above ("April will exceed FedEx max") raises the natural
+# follow-up: where do we move the excess? This simulator quantifies
+# the cost delta of a 5% shift from FedEx+UPS into IP.
+
+# %% [markdown]
+# ### Seed with the latest week's actual carrier mix
+# We use the most recent observed allocation as the "current state" baseline,
+# rather than a hypothetical mix.
 
 # %%
-# Use latest week's volumes as the "current allocation" baseline
 latest_week = carrier_history["week_start"].max()
 latest_volumes = (
     carrier_history[carrier_history["week_start"] == latest_week]
@@ -178,6 +199,11 @@ latest_volumes = (
 print(f"Latest week: {latest_week.date()}")
 print(f"Volumes: {latest_volumes}")
 
+# %% [markdown]
+# ### Run the simulator
+# Output is current vs proposed allocation, weekly savings, and an annualized
+# (× 52) figure. Cost-per-package values are illustrative — see deck assumptions.
+
 # %%
 cost_scenarios = carrier_cost_shift_simulator(
     current_allocation=latest_volumes,
@@ -187,6 +213,9 @@ cost_scenarios = carrier_cost_shift_simulator(
     shift_to="IP",
 )
 cost_scenarios
+
+# %% [markdown]
+# ### Persist for the dashboard
 
 # %%
 cost_scenarios.to_csv(DATA_DIR / "cost_optimization.csv", index=False)
@@ -272,13 +301,22 @@ fig.savefig(PRESENTATION_DIR / "09_executive_dashboard.png", dpi=150, bbox_inche
 plt.show()
 
 # %% [markdown]
-# ## 7. Wrap up
+# ## ✅ Done
 #
-# **What's saved to `data/`:**
-# - `fedex_contract_status.csv` — monthly forecasted volume vs contract band
-# - `cost_optimization.csv` — current vs proposed carrier allocation
-#
-# **What's saved to `presentation/`:**
-# - 9 charts ready to drop into the 8-slide deck
-#
-# **Sunday morning:** build the deck, polish, ship.
+# Notebook 3 produced 2 artifacts in `data/` and 3 charts in `presentation/`,
+# bringing the project total to 14 reproducible artifacts ready for the deck.
+
+# %%
+print("=" * 60)
+print("✅ Notebook 3 complete — full pipeline produced:")
+print("=" * 60)
+print("data/         fedex_contract_status.csv, cost_optimization.csv")
+print("presentation/ 07_fedex_contract.png, 08_ontrac_alert.png,")
+print("              09_executive_dashboard.png")
+print()
+above_max = (fedex_status["status"] == "ABOVE MAXIMUM").sum()
+print(f"FedEx alerts: {above_max} month(s) flagged ABOVE MAXIMUM")
+print(f"OnTrac:       breach week = {alert['breach_week']}")
+weekly_savings = cost_scenarios["savings_$"].iloc[1]
+annual_savings = cost_scenarios["annualized_savings_$"].iloc[1]
+print(f"Cost shift:   ${weekly_savings:,.0f}/week → ${annual_savings:,.0f}/year")

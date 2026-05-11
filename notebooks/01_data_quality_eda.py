@@ -8,11 +8,10 @@
 # # 📦 ParcelCast — Notebook 1
 # ## Data Loading, Quality & Exploration
 #
-# **Purpose:** Take raw M5 data → reframe as parcel forecasting problem → assess
-# quality → clean systematically → understand the time series.
-#
-# This notebook proves: *I don't blindly trust data. I assess, document, and
-# validate before modeling.*
+# **What this notebook does:** Loads the public M5 retail dataset, reframes
+# it as a parcel-forecasting problem (units → packages via UPP, regional
+# carrier allocation), then runs a documented cleaning pass and an 8-check
+# validation suite before handing two parquet files to the modeling notebook.
 
 # %%
 import sys
@@ -69,6 +68,11 @@ print(f"  Categories → Channels:  {CATEGORY_TO_CHANNEL}")
 print(f"  UPP baselines:          {UPP_BASELINE}")
 print(f"  Carrier base shares:    {CARRIER_BASE_SHARES}")
 
+# %% [markdown]
+# ### Reshape wide → long and join calendar metadata
+# M5 ships in wide format (1,941 day-columns per SKU). We melt to long format
+# so every observation is one row, then join real dates from the calendar table.
+
 # %%
 long_df = load_and_prepare()
 print(f"\nLoaded long-format data: {len(long_df):,} rows")
@@ -85,13 +89,20 @@ weekly.head()
 
 # %% [markdown]
 # ## 3. Convert units → packages via UPP
+# Package volume = units ÷ UPP. We treat 1P UPP as time-varying (declines
+# ~3%/yr per the WPR observation) and MP UPP as static — that asymmetry is
+# the project's signature analytical detail.
 
 # %%
 weekly = convert_units_to_packages(weekly)
 weekly.head()
 
+# %% [markdown]
+# ### The signature insight: declining 1P UPP
+# A model that predicts units perfectly but assumes static UPP will systematically
+# under-forecast packages. The chart below makes the asymmetry visible.
+
 # %%
-# Show the UPP trend (1P declining, MP static) — the project's key insight
 CHANNEL_COLORS = {"1P": "steelblue", "MP": "darkslategray"}
 fig, ax = plt.subplots(figsize=(12, 5))
 for ch in weekly["channel"].unique():
@@ -112,26 +123,39 @@ plt.show()
 
 # %% [markdown]
 # ## 4. Split packages → per-carrier volumes (with regional adjustment)
+# Apply the regional carrier-share matrix. OnTrac is West-Coast-heavy; FedEx is
+# flatter across regions. Each (region, channel, week) row expands into 4
+# (one per carrier) so we can monitor per-carrier risk downstream.
 
 # %%
 carrier_df = split_packages_by_carrier(weekly)
 print(f"Carrier-level rows: {len(carrier_df):,}")
 carrier_df.head(10)
 
+# %% [markdown]
+# ### Audit: do carrier shares sum to 1.0?
+# Floating-point arithmetic and regional adjustments can introduce drift.
+# We check before normalizing in §6.
+
 # %%
-# Audit: do carrier shares sum to 1.0?
 share_audit = audit_carrier_shares(carrier_df)
 print(f"Rows where shares fail sum-to-1: {len(share_audit)}")
 
 # %% [markdown]
 # ## 5. Data Quality Profile
+# A one-page summary per column (dtype, missing %, unique count, basic stats)
+# is the cheapest defense against garbage-in/garbage-out before modeling.
 
 # %%
 profile = profile_dataframe(carrier_df)
 profile
 
+# %% [markdown]
+# ### Outlier detection (IQR rule)
+# Tukey's `[Q1 − 1.5·IQR, Q3 + 1.5·IQR]` flags candidates without assuming a
+# Gaussian distribution. Detection ≠ deletion — we winsorize in §6.
+
 # %%
-# Outlier detection on package volume
 outliers = detect_outliers_iqr(carrier_df["carrier_packages"])
 print("Carrier-package outlier analysis:")
 for k, v in outliers.items():
@@ -268,6 +292,11 @@ plt.show()
 validation = run_validation_suite(carrier_df)
 validation
 
+# %% [markdown]
+# ### Validation summary
+# All 8 checks must pass for the dataset to be considered ready for modeling.
+# A failure here is a hard stop, not a warning.
+
 # %%
 n_pass = validation["pass"].sum()
 n_total = len(validation)
@@ -293,3 +322,18 @@ print(f"Saved {len(carrier_df):,} rows to weekly_network_volumes.parquet")
 print(f"Saved {len(weekly):,} rows to weekly_region_channel.parquet")
 print(f"Audit: {len(audit_df)} entries")
 print(f"Validation: {n_pass}/{n_total} passed")
+
+# %% [markdown]
+# ## ✅ Done
+#
+# Notebook 1 produced 4 artifacts in `data/` and 3 charts in `presentation/`.
+# The cleaned, validated parquet files are now ready for the modeling notebook.
+
+# %%
+print("=" * 60)
+print("✅ Notebook 1 complete")
+print("=" * 60)
+print("data/         weekly_network_volumes.parquet, weekly_region_channel.parquet")
+print("              cleaning_audit_log.csv, validation_results.csv")
+print("presentation/ 01_upp_trend.png, 02_decomposition.png, 03_correlation_heatmap.png")
+print(f"Validation:   {n_pass}/{n_total} checks passed")
